@@ -10,7 +10,7 @@ class PostModel(db.Model):
     content = db.Column(db.Text, nullable=False)
     
     author_id = db.Column(
-        db.String(36), db.ForeignKey("user.id"), nullable=False
+        db.String(36), db.ForeignKey("users.id"), nullable=False
     )
     author = db.relationship("UserModel", back_populates="posts")
     

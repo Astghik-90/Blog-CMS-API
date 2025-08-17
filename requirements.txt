@@ -6,3 +6,4 @@ flask-sqlalchemy
 marshmallow
 flask-jwt-extended 
 werkzeug
+flask-migrate

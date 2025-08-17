@@ -4,7 +4,7 @@ from enums.roles import UserRole
 
 
 class UserModel(db.Model):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = db.Column(db.String(80), unique=True, nullable=False)

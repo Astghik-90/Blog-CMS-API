@@ -3,6 +3,7 @@ import os
 from flask import Flask, jsonify
 from flask_smorest import Api
 from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
 
 from db import db 
 import models
@@ -27,7 +28,7 @@ def create_app(db_url=None):
     )    
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
-    
+    migrate = Migrate(app, db)
     api = Api(app)
 
     app.config["JWT_SECRET_KEY"] = "python"
@@ -48,13 +49,6 @@ def create_app(db_url=None):
             "error": "fresh_token_required"
         }), 401
 
-    print(type(app))
-
-    @app.before_request
-    def create_tables():
-        app.before_request_funcs[None].remove(create_tables)
-
-        db.create_all()
 
     api.register_blueprint(UserBlueprint)
     api.register_blueprint(PostBlueprint)
