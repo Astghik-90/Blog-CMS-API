@@ -97,7 +97,7 @@ class UserProfile(MethodView):
         return user, 200
 
     # update profile info
-    @jwt_required()
+    @jwt_required(fresh=True)
     @blp.arguments(UpdateProfileSchema)
     @blp.response(200, UserSchema)
     def put(self, user_data, user_id):
@@ -139,7 +139,7 @@ class UserProfile(MethodView):
         return user, 200
     
     # delete user
-    @jwt_required()
+    @jwt_required(fresh=True)
     @blp.response(204)
     def delete(self, user_id):
         jwt_identity = get_jwt_identity()
@@ -156,9 +156,10 @@ class UserProfile(MethodView):
             abort(500, message="An error occurred while deleting the user.")
         return {"message": "User deleted successfully"}, 204
 
+# change password
 @blp.route("/user/<uuid:user_id>/password")
 class UserPasswordChange(MethodView):
-    @jwt_required()
+    @jwt_required(fresh=True)
     @blp.arguments(ChangePasswordSchema)
     def patch(self, password_data, user_id):
         # check the identity of the user
@@ -182,7 +183,7 @@ class UserPasswordChange(MethodView):
 
 @blp.route("/user/<uuid:user_id>/role")
 class UserRoleChange(MethodView):
-    @jwt_required()
+    @jwt_required(fresh=True)
     @blp.arguments(ChangeRoleSchema)
     @blp.response(200, UserSchema)
     def patch(self, role_data, user_id):

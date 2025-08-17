@@ -4,7 +4,7 @@ from flask import Flask, jsonify
 from flask_smorest import Api
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
-
+from dotenv import load_dotenv
 from db import db 
 import models
 from blocklist import BLOCKLIST
@@ -15,7 +15,7 @@ from resources.category import blp as CategoryBlueprint
 
 def create_app(db_url=None):
     app = Flask(__name__)
-
+    load_dotenv()
     app.config["PROPAGATE_EXCEPTIONS"] = True
     app.config["API_TITLE"] = "Stores REST API"
     app.config["API_VERSION"] = "v1"
@@ -31,7 +31,7 @@ def create_app(db_url=None):
     migrate = Migrate(app, db)
     api = Api(app)
 
-    app.config["JWT_SECRET_KEY"] = "python"
+    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "change-this-super-secret-key-in-production")
     jwt = JWTManager(app)
 
     @jwt.token_in_blocklist_loader

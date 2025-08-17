@@ -7,3 +7,5 @@ marshmallow
 flask-jwt-extended 
 werkzeug
 flask-migrate
+gunicorn
+psycopg2-binary

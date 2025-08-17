@@ -19,7 +19,7 @@ class PostList(MethodView):
     def get(self):
         return PostModel.query.all()
     
-    @jwt_required()
+    @jwt_required(fresh=True)
     @blp.arguments(PostCreationSchema)
     @blp.response(201, PostResponseSchema)
     def post(self, post_data):
@@ -46,13 +46,14 @@ class PostList(MethodView):
 
 @blp.route("/post/<uuid:post_id>")
 class Post(MethodView):
+    # get post details by ID
     @jwt_required()
     @blp.response(200, PostResponseSchema)
     def get(self, post_id):
         post = PostModel.query.get_or_404(str(post_id))
         return post, 200
 
-    @jwt_required()
+    @jwt_required(fresh=True)
     @blp.arguments(PostUpdateSchema)
     @blp.response(200, PostResponseSchema)
     def put(self, post_data, post_id):
@@ -76,7 +77,7 @@ class Post(MethodView):
         
         return post, 200
     
-    @jwt_required()
+    @jwt_required(fresh=True)
     @blp.response(204)
     def delete(self, post_id):
         post = PostModel.query.get_or_404(str(post_id))
