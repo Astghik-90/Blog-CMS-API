@@ -4,7 +4,7 @@ from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_, and_
-from flask_jwt_extended import create_access_token, get_jwt_identity, get_jwt, jwt_required
+from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity, get_jwt, jwt_required
 
 from db import db
 from models import UserModel
@@ -52,11 +52,24 @@ class UserLogin(MethodView):
         if user and check_password_hash(user.password_hash, user_data["password"]):
             access_token = create_access_token(
                 identity=str(user.id),
-                additional_claims={"role": user.role}
+                additional_claims={"role": user.role},
+                fresh=True
             )
-            return {"access_token": access_token}, 200
+            refresh_token = create_refresh_token(
+                identity=str(user.id),
+                additional_claims={"role": user.role}
+                )
+            return {"access_token": access_token, "refresh_token": refresh_token}
         
         abort(401, message="Invalid credentials.")
+
+@blp.route("/refresh")
+class UserRefresh(MethodView):
+    @jwt_required(refresh=True)
+    def post(self):
+        current_user = get_jwt_identity()
+        new_token = create_access_token(identity=current_user, fresh=False)
+        return {"access_token": new_token}
         
 @blp.route("/logout")
 class UserLogout(MethodView):
@@ -125,8 +138,6 @@ class UserProfile(MethodView):
 
         return user, 200
     
-
-
     # delete user
     @jwt_required()
     @blp.response(204)

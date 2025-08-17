@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_smorest import Api
 from flask_jwt_extended import JWTManager
 
@@ -39,7 +39,14 @@ def create_app(db_url=None):
 
     @jwt.revoked_token_loader
     def revoked_token_callback(jwt_header, jwt_payload):
-        return {"msg": "Token expired."}, 401
+        return {"msg": "Token revoked."}, 401
+
+    @jwt.needs_fresh_token_loader
+    def token_not_fresh_callback(jwt_header, jwt_payload):
+        return jsonify({
+            "description": "The token is not fresh.", 
+            "error": "fresh_token_required"
+        }), 401
 
     print(type(app))
 
