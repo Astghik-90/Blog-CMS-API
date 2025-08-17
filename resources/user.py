@@ -1,4 +1,3 @@
-import uuid
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
@@ -11,6 +10,7 @@ from db import db
 from models import UserModel
 from schemas import UserSchema, UserSignupSchema, UserLoginSchema, UpdateProfileSchema, ChangePasswordSchema, ChangeRoleSchema
 from enums.roles import UserRole
+from blocklist import BLOCKLIST
 
 blp = Blueprint("Users", __name__, description="Operations on users")
 
@@ -51,14 +51,22 @@ class UserLogin(MethodView):
         
         if user and check_password_hash(user.password_hash, user_data["password"]):
             access_token = create_access_token(
-                identity={"id": user.id, "username": user.username},
+                identity=str(user.id),
                 additional_claims={"role": user.role}
             )
             return {"access_token": access_token}, 200
         
         abort(401, message="Invalid credentials.")
+        
+@blp.route("/logout")
+class UserLogout(MethodView):
+    @jwt_required()
+    def post(self):
+        jti = get_jwt()["jti"]
+        BLOCKLIST.add(jti)
+        return {"message": "Successfully logged out."}, 200
 
-@blp.route("/user/<int:user_id>")
+@blp.route("/user/<uuid:user_id>")
 class UserProfile(MethodView):
     # get user details
     @jwt_required()
@@ -68,10 +76,10 @@ class UserProfile(MethodView):
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
 
-        if jwt_identity["id"] != user_id and jwt["role"] != UserRole.ADMIN: 
+        if jwt_identity != str(user_id) and jwt["role"] != UserRole.ADMIN: 
             abort(403, message="Access forbidden.")
 
-        user = UserModel.query.get_or_404(user_id)
+        user = UserModel.query.get_or_404(str(user_id))
         
         return user, 200
 
@@ -82,10 +90,10 @@ class UserProfile(MethodView):
     def put(self, user_data, user_id):
         jwt_identity = get_jwt_identity()
         # error if trying to update another user's profile
-        if user_id != jwt_identity["id"]:
+        if str(user_id) != jwt_identity:
             abort(403, message="Access forbidden.")
         
-        user = UserModel.query.get_or_404(user_id)
+        user = UserModel.query.get_or_404(str(user_id))
 
         # Check for existing username and email
         existing_user = UserModel.query.filter(
@@ -117,19 +125,38 @@ class UserProfile(MethodView):
 
         return user, 200
     
-    # password change
+
+
+    # delete user
+    @jwt_required()
+    @blp.response(204)
+    def delete(self, user_id):
+        jwt_identity = get_jwt_identity()
+        jwt = get_jwt()
+
+        if jwt_identity != str(user_id) and jwt["role"] != UserRole.ADMIN: 
+            abort(403, message="Access forbidden.")
+            
+        user = UserModel.query.get_or_404(str(user_id))
+        try:
+            db.session.delete(user)
+            db.session.commit()
+        except SQLAlchemyError:
+            abort(500, message="An error occurred while deleting the user.")
+        return {"message": "User deleted successfully"}, 204
+
+@blp.route("/user/<uuid:user_id>/password")
+class UserPasswordChange(MethodView):
     @jwt_required()
     @blp.arguments(ChangePasswordSchema)
-    @blp.route("/password") # adding aditional route
     def patch(self, password_data, user_id):
-
         # check the identity of the user
         jwt_identity = get_jwt_identity()
-        if jwt_identity["id"] != user_id:
+        if jwt_identity != str(user_id):
             abort(403, message="Access forbidden.")
 
-        user = UserModel.query.get_or_404(user_id)
-        #error if the password is wrong
+        user = UserModel.query.get_or_404(str(user_id))
+        # error if the password is wrong
         if not check_password_hash(user.password_hash, password_data["old_password"]):
             abort(401, message="Invalid old password.")
 
@@ -142,35 +169,17 @@ class UserProfile(MethodView):
         
         return {"message": "Password changed successfully."}, 200
 
-    # delete user
-    @jwt_required()
-    @blp.response(204)
-    def delete(self, user_id):
-        jwt_identity = get_jwt_identity()
-        jwt = get_jwt()
-
-        if jwt_identity["id"] != user_id and jwt["role"] != UserRole.ADMIN: 
-            abort(403, message="Access forbidden.")
-            
-        user = UserModel.query.get_or_404(user_id)
-        try:
-            db.session.delete(user)
-            db.session.commit()
-        except SQLAlchemyError:
-            abort(500, message="An error occurred while deleting the user.")
-        return {"message": "User deleted successfully"}, 204
-    
-    # change user role
+@blp.route("/user/<uuid:user_id>/role")
+class UserRoleChange(MethodView):
     @jwt_required()
     @blp.arguments(ChangeRoleSchema)
     @blp.response(200, UserSchema)
-    @blp.route("/role")
     def patch(self, role_data, user_id):
         jwt = get_jwt()
         if jwt["role"] != UserRole.ADMIN:
             abort(403, message="Access forbidden.")
 
-        user = UserModel.query.get_or_404(user_id)
+        user = UserModel.query.get_or_404(str(user_id))
         user.role = role_data["role"]
         try:
             db.session.commit()
@@ -179,3 +188,5 @@ class UserProfile(MethodView):
             abort(500, message="An error occurred while updating the user role.")
 
         return user, 200
+    
+

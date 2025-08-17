@@ -1,15 +1,16 @@
+import uuid
 from db import db
 
 
 class PostModel(db.Model):
     __tablename__ = "posts"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = db.Column(db.String(255), nullable=False)
     content = db.Column(db.Text, nullable=False)
     
     author_id = db.Column(
-        db.Integer, db.ForeignKey("user.id"), nullable=False
+        db.String(36), db.ForeignKey("user.id"), nullable=False
     )
     author = db.relationship("UserModel", back_populates="posts")
     

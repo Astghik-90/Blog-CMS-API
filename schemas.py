@@ -3,21 +3,21 @@ from datetime import datetime
     
 # plain schemas
 class PlainCommentSchema(Schema):
-    id = fields.Int(dump_only=True)
+    id = fields.Str(dump_only=True)
     content = fields.Str(required=True)
     author = fields.Str(dump_only=True)
     
 class PlainPostSchema(Schema):
-    id = fields.Int(dump_only=True)
+    id = fields.Str(dump_only=True)
     title = fields.Str(required=True)
     content = fields.Str(required=True)
 
 class PlainUserSchema(Schema):
-    id = fields.Int(dump_only=True)
+    id = fields.Str(dump_only=True)
     username = fields.Str(required=True)
     
 class CategorySchema(Schema):
-    id = fields.Int(dump_only=True)
+    id = fields.Str(dump_only=True)
     name = fields.Str(required=True)
  
 #user schemas   
@@ -57,7 +57,7 @@ class ChangeRoleSchema(Schema):
 # comment schemas
 class CommentSchema(PlainCommentSchema):
     post = fields.Nested(PlainPostSchema(), dump_only=True)
-    author_id = fields.Int(required=True, load_only=True)
+    author_id = fields.Str(required=True, load_only=True)
 
 # post schemas   
 class PostUpdateSchema(Schema):
@@ -68,13 +68,13 @@ class PostUpdateSchema(Schema):
 class PostCreationSchema(Schema):
     title = fields.Str(required=True)
     content = fields.Str(required=True)
-    category_names = fields.List(fields.Str(), required=True) 
-    
+    category_names = fields.List(fields.Str(), dump_default=[])
+
 class PostResponseSchema(PlainPostSchema): #individual post details
     created_at = fields.DateTime()
     updated_at = fields.DateTime()
     author = fields.Nested(PlainUserSchema())
-    comments = fields.List(fields.Nested(PlainCommentSchema()))
-    categories = fields.List(fields.Nested(CategorySchema))
+    comments = fields.List(fields.Nested(PlainCommentSchema()), dump_default=[])
+    categories = fields.List(fields.Nested(CategorySchema), dump_default=[])
 
-    
+

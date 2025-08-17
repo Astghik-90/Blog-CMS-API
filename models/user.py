@@ -1,3 +1,4 @@
+import uuid
 from db import db
 from enums.roles import UserRole
 
@@ -5,7 +6,7 @@ from enums.roles import UserRole
 class UserModel(db.Model):
     __tablename__ = "user"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
@@ -14,6 +15,10 @@ class UserModel(db.Model):
     )
     created_at = db.Column(
         db.DateTime, server_default=db.func.now(), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime, server_default=db.func.now(), 
+        onupdate=db.func.now(), nullable=False
     )
 
     posts = db.relationship(
