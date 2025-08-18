@@ -79,7 +79,18 @@ class UserLogout(MethodView):
         BLOCKLIST.add(jti)
         return {"message": "Successfully logged out."}, 200
 
-@blp.route("/user/<uuid:user_id>")
+# get all users - only Admin can access
+@blp.route("/users")
+class UserList(MethodView):
+    @jwt_required()
+    @blp.response(200, UserSchema(many=True))
+    def get(self):
+        jwt = get_jwt()
+        if jwt["role"] != UserRole.ADMIN:
+            abort(403, message="Access forbidden.")     
+        return UserModel.query.all(), 200
+
+@blp.route("/users/<uuid:user_id>")
 class UserProfile(MethodView):
     # get user details
     @jwt_required()
@@ -93,7 +104,6 @@ class UserProfile(MethodView):
             abort(403, message="Access forbidden.")
 
         user = UserModel.query.get_or_404(str(user_id))
-        
         return user, 200
 
     # update profile info
@@ -157,7 +167,7 @@ class UserProfile(MethodView):
         return {"message": "User deleted successfully"}, 204
 
 # change password
-@blp.route("/user/<uuid:user_id>/password")
+@blp.route("/users/<uuid:user_id>/password")
 class UserPasswordChange(MethodView):
     @jwt_required(fresh=True)
     @blp.arguments(ChangePasswordSchema)
@@ -181,7 +191,8 @@ class UserPasswordChange(MethodView):
         
         return {"message": "Password changed successfully."}, 200
 
-@blp.route("/user/<uuid:user_id>/role")
+# change user role
+@blp.route("/users/<uuid:user_id>/role")
 class UserRoleChange(MethodView):
     @jwt_required(fresh=True)
     @blp.arguments(ChangeRoleSchema)
@@ -201,8 +212,8 @@ class UserRoleChange(MethodView):
 
         return user, 200
 
-# get posts of user
-@blp.route("/user/<uuid:user_id>/posts")
+# get posts o
+@blp.route("/users/<uuid:user_id>/posts")
 class UserPosts(MethodView):
     @jwt_required()
     @blp.response(200, PostResponseSchema(many=True))
