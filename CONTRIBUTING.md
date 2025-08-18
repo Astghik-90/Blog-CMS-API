@@ -108,6 +108,25 @@ docker compose down -v
 docker compose up --build
 ```
 
+#### Direct Database Access
+
+1. **Access database container**
+   ```
+   docker compose exec db psql -U postgres -d myapp
+   ```
+
+2. **View users**
+   ```sql
+   SELECT id, username, email, role FROM users;
+   ```
+
+3. **Exit database**
+   ```sql
+   \q
+   ```
+   
+**Note:** The web container doesn't have `psql` installed, so direct PostgreSQL access must be done through the database container.
+
 ## Code Changes
 
 ### Making Changes

@@ -8,7 +8,7 @@ from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt
 
 from db import db
 from models import UserModel
-from schemas import UserSchema, UserSignupSchema, UserLoginSchema, UpdateProfileSchema, ChangePasswordSchema, ChangeRoleSchema
+from schemas import UserSchema, UserSignupSchema, UserLoginSchema, UpdateProfileSchema, ChangePasswordSchema, ChangeRoleSchema, PostResponseSchema  
 from enums.roles import UserRole
 from blocklist import BLOCKLIST
 
@@ -200,5 +200,12 @@ class UserRoleChange(MethodView):
             abort(500, message="An error occurred while updating the user role.")
 
         return user, 200
-    
 
+# get posts of user
+@blp.route("/user/<uuid:user_id>/posts")
+class UserPosts(MethodView):
+    @jwt_required()
+    @blp.response(200, PostResponseSchema(many=True))
+    def get(self, user_id):
+        user = UserModel.query.get_or_404(str(user_id))
+        return user.posts, 200

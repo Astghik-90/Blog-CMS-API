@@ -4,8 +4,7 @@ from datetime import datetime
 # plain schemas
 class PlainCommentSchema(Schema):
     id = fields.Str(dump_only=True)
-    content = fields.Str(required=True)
-    author = fields.Str(dump_only=True)
+    content = fields.Str(required=True, validate=validate.Length(min=2))
     
 class PlainPostSchema(Schema):
     id = fields.Str(dump_only=True)
@@ -54,11 +53,12 @@ class ChangePasswordSchema(Schema):
 class ChangeRoleSchema(Schema):
     role = fields.Int(required=True, validate=lambda x: x in [1, 2])
 
-# comment schemas
+# comment schema for get comment by ID
 class CommentSchema(PlainCommentSchema):
+    created_at = fields.DateTime(dump_only=True)
+    user = fields.Nested(PlainUserSchema(), dump_only=True)
     post = fields.Nested(PlainPostSchema(), dump_only=True)
-    author_id = fields.Str(required=True, load_only=True)
-
+    
 # post schemas   
 class PostUpdateSchema(Schema):
     title = fields.Str()

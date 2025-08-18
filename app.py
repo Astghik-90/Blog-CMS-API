@@ -12,12 +12,13 @@ from blocklist import BLOCKLIST
 from resources.user import blp as UserBlueprint
 from resources.post import blp as PostBlueprint
 from resources.category import blp as CategoryBlueprint
+from resources.comment import blp as CommentBlueprint
 
 def create_app(db_url=None):
     app = Flask(__name__)
     load_dotenv()
     app.config["PROPAGATE_EXCEPTIONS"] = True
-    app.config["API_TITLE"] = "Stores REST API"
+    app.config["API_TITLE"] = "Blog CMS API"
     app.config["API_VERSION"] = "v1"
     app.config["OPENAPI_VERSION"] = "3.0.3"
     app.config["OPENAPI_URL_PREFIX"] = "/"
@@ -53,5 +54,5 @@ def create_app(db_url=None):
     api.register_blueprint(UserBlueprint)
     api.register_blueprint(PostBlueprint)
     api.register_blueprint(CategoryBlueprint)
-    
+    api.register_blueprint(CommentBlueprint)
     return app
