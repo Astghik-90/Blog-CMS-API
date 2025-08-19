@@ -1,3 +1,5 @@
+import os
+import requests
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
@@ -14,32 +16,45 @@ from blocklist import BLOCKLIST
 
 blp = Blueprint("Users", __name__, description="Operations on users")
 
+
+def send_simple_message(to, subject, body):
+    domain = os.getenv("MAILGUN_DOMAIN")
+    return requests.post(
+        f"https://api.mailgun.net/v3/{domain}/messages",
+        auth=("api", os.getenv("MAILGUN_API_KEY")),
+        data={
+            "from": f"TechBlog team <mailgun@{domain}>",
+            "to": [to],
+            "subject": subject,
+            "text": body,
+        },
+    )
+    
 # registration
 @blp.route("/register")
 class UserRegister(MethodView):
     @blp.arguments(UserSignupSchema)
     def post(self, user_data):
-        if UserModel.query.filter(
-            or_(
-                UserModel.username == user_data["username"],
-                UserModel.email == user_data["email"]
-            )
-        ).first():
-            abort(409, message="User already exists.")
 
         user = UserModel(username=user_data["username"].lower(),
                          email=user_data["email"].lower(),
                          password_hash=generate_password_hash(user_data["password"], method='pbkdf2:sha256', salt_length=16)
                          )
-        
         try:
             db.session.add(user)
             db.session.commit()
         except IntegrityError:
+            db.session.rollback()
             abort(409, message="Username or email already exists.")
         except SQLAlchemyError:
+            db.session.rollback()
             abort(500, message="An error occurred while registering the user.")
-
+        
+        send_simple_message(
+            to=user.email,
+            subject="Successfully signed up",
+            body=f"Hi {user.username}! You have successfully signed up to the TechBlog."
+        )
         return {"message": "User created successfully."}, 201
 
 # login    

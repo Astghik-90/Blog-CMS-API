@@ -9,3 +9,4 @@ werkzeug
 flask-migrate
 gunicorn
 psycopg2-binary
+requests
