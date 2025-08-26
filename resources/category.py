@@ -11,13 +11,13 @@ from schemas import CategorySchema
 
 blp = Blueprint("Category", __name__, description="Operations on categories")
 
-@blp.route("/category")
+@blp.route("/categories")
 class CategoryList(MethodView):
     # get all categories
     @jwt_required()
     @blp.response(200, CategorySchema(many=True))
     def get(self):
-        return CategoryModel.query.all(), 200
+        return CategoryModel.query.all()
 
     # create category
     @jwt_required(fresh=True)
@@ -25,7 +25,7 @@ class CategoryList(MethodView):
     @blp.response(201, CategorySchema)
     def post(self, category_data):
         jwt = get_jwt()
-        if jwt["role"] != UserRole.ADMIN:
+        if jwt["role"] != UserRole.ADMIN.value:
             abort(403, message="Access forbidden.")
             
         category = CategoryModel(**category_data)
@@ -38,23 +38,23 @@ class CategoryList(MethodView):
         except SQLAlchemyError:
             db.session.rollback()
             abort(500, message="An error occurred while creating the category.")
-        return category, 201
+        return category
 
-@blp.route("/category/<uuid:category_id>")
+@blp.route("/categories/<uuid:category_id>")
 class CategoryItem(MethodView):
     # get category details by ID
     @jwt_required()
     @blp.response(200, CategorySchema)
     def get(self, category_id):
         category = CategoryModel.query.get_or_404(str(category_id))
-        return category, 200
+        return category
 
     # delete category
     @jwt_required(fresh=True)
     @blp.response(204)
     def delete(self, category_id):
         jwt = get_jwt()
-        if jwt["role"] != UserRole.ADMIN:
+        if jwt["role"] != UserRole.ADMIN.value:
             abort(403, message="Access forbidden.")
             
         category = CategoryModel.query.get_or_404(str(category_id))
@@ -64,4 +64,4 @@ class CategoryItem(MethodView):
         except SQLAlchemyError:
             db.session.rollback()
             abort(500, message="An error occurred while deleting the category.")
-        return "", 204
+        return ""

@@ -40,7 +40,7 @@ class UserLoginSchema(Schema):
 
 class UpdateProfileSchema(PlainUserSchema):
     email = fields.Email(required=True)
-    role = fields.Int(required=True, dump_only=True, validate=lambda x: x in [1, 2]) 
+    role = fields.Int(dump_only=True, validate=lambda x: x in [1, 2]) 
     updated_at = fields.DateTime(dump_only=True)
 
 class ChangePasswordSchema(Schema):

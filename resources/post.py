@@ -7,12 +7,12 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from db import db
 from models import PostModel, CategoryModel
 from schemas import PlainPostSchema, PostResponseSchema, PostCreationSchema, PostUpdateSchema
-
+from enums.roles import UserRole
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError     
 
-blp = Blueprint("Post", __name__, description="Operations on stores")
+blp = Blueprint("Post", __name__, description="Operations on posts")
 
-@blp.route("/post")
+@blp.route("/posts")
 class PostList(MethodView):
     @jwt_required()
     @blp.response(200, PlainPostSchema(many=True))
@@ -40,11 +40,12 @@ class PostList(MethodView):
             db.session.add(post)
             db.session.commit()   
         except SQLAlchemyError:
+            db.session.rollback()
             abort(500, message="An error occurred while creating the post.")
         
         return post, 201
 
-@blp.route("/post/<uuid:post_id>")
+@blp.route("/posts/<uuid:post_id>")
 class Post(MethodView):
     # get post details by ID
     @jwt_required()
@@ -57,15 +58,33 @@ class Post(MethodView):
     @blp.arguments(PostUpdateSchema)
     @blp.response(200, PostResponseSchema)
     def put(self, post_data, post_id):
-        post = PostModel.query.get_or_404(str(post_id))
         
         # Check authorization - only author or admin can update
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
         
-        if post.author_id != jwt_identity and jwt["role"] != 1:  # 1 = ADMIN
+        if post.author_id != jwt_identity and jwt["role"] != UserRole.ADMIN.value: 
             abort(403, message="Access forbidden. Only the author or admin can update this post.")
-        
+
+        post = PostModel.query.get_or_404(str(post_id))
+
+        # update categories only if the field is provided in request
+        if "category_names" in post_data:
+            category_names = post_data.pop("category_names")
+
+            if category_names:  # if category_names is not empty
+                categories = CategoryModel.query.filter(CategoryModel.name.in_(category_names)).all()
+
+                if len(categories) != len(category_names):
+                    abort(404, message="One or more categories not found.")
+
+                post.categories = categories
+            else:
+                # if category_names is empty, remove the categories
+                post.categories = []
+
+
+        # update post data
         for key, value in post_data.items():
             setattr(post, key, value)
         
@@ -86,7 +105,7 @@ class Post(MethodView):
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
         
-        if post.author_id != jwt_identity and jwt["role"] != 1:  # 1 = ADMIN
+        if post.author_id != jwt_identity and jwt["role"] != UserRole.ADMIN.value: 
             abort(403, message="Access forbidden. Only the author or admin can delete this post.")
         
         try:

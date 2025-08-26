@@ -11,27 +11,27 @@ from schemas import CommentSchema, PlainCommentSchema
 
 blp = Blueprint("Comment", __name__, description="Operations on comments")
 
-@blp.route("/comment")
+@blp.route("/comments")
 class AllCommentsList(MethodView):
     # get all comments (admin only)
     @jwt_required()
     @blp.response(200, CommentSchema(many=True))
     def get(self):
         jwt = get_jwt()
-        if jwt["role"] != UserRole.ADMIN:
+        if jwt["role"] != UserRole.ADMIN.value:
             abort(403, message="Access forbidden. Admin access required.")
         
         comments = CommentModel.query.all()
-        return comments, 200
+        return comments
 
-@blp.route("/<uuid:post_id>/comment")
+@blp.route("/posts/<uuid:post_id>/comments")
 class PostCommentList(MethodView):
     # get all comments of the post
     @jwt_required()
     @blp.response(200, PlainCommentSchema(many=True))
     def get(self, post_id):
         post = PostModel.query.get_or_404(str(post_id))
-        return post.comments, 200
+        return post.comments
 
     # create comment for the post
     @jwt_required()
@@ -51,9 +51,9 @@ class PostCommentList(MethodView):
         except SQLAlchemyError:
             db.session.rollback()
             abort(500, message="An error occurred while creating the comment.")
-        return comment, 201
+        return comment
 
-@blp.route("/comment/<uuid:comment_id>")
+@blp.route("/comments/<uuid:comment_id>")
 class Comment(MethodView):
     # get comment details by ID
     @jwt_required()
@@ -70,7 +70,7 @@ class Comment(MethodView):
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
         #  Admin, comment owner, or post author
-        if (jwt["role"] != UserRole.ADMIN and 
+        if (jwt["role"] != UserRole.ADMIN.value and 
             jwt_identity != comment.user_id and 
             jwt_identity != comment.post.author_id):
             abort(403, message="Access forbidden.")
@@ -80,7 +80,7 @@ class Comment(MethodView):
         except SQLAlchemyError:
             db.session.rollback()
             abort(500, message="An error occurred while deleting the comment.")
-        return "", 204
+        return ""
     
     @jwt_required()  
     @blp.arguments(PlainCommentSchema)
@@ -91,10 +91,10 @@ class Comment(MethodView):
         jwt_identity = get_jwt_identity()
         if jwt_identity != comment.user_id:
             abort(403, message="Access forbidden.")
-        comment.content = comment_data.content
+        comment.content = comment_data["content"]
         try:
             db.session.commit()
         except SQLAlchemyError:
             db.session.rollback()
             abort(500, message="An error occurred while updating the comment.")
-        return comment, 200
+        return comment

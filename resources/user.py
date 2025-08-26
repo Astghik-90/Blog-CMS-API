@@ -1,12 +1,13 @@
 import os
 import requests
-from flask import request
+from flask import request, render_template
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_, and_
 from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity, get_jwt, jwt_required
+import jinja2
 
 from db import db
 from models import UserModel
@@ -16,8 +17,14 @@ from blocklist import BLOCKLIST
 
 blp = Blueprint("Users", __name__, description="Operations on users")
 
+template_loader = jinja2.FileSystemLoader('templates')
+template_env = jinja2.Environment(loader=template_loader)
 
-def send_simple_message(to, subject, body):
+def render_template(template_name, **context):
+    return template_env.get_template(template_name).render(**context)
+
+
+def send_simple_message(to, subject, body, html):
     domain = os.getenv("MAILGUN_DOMAIN")
     return requests.post(
         f"https://api.mailgun.net/v3/{domain}/messages",
@@ -27,9 +34,18 @@ def send_simple_message(to, subject, body):
             "to": [to],
             "subject": subject,
             "text": body,
+            "html": html
         },
     )
-    
+
+def send_user_registration_email(email, username):
+    return send_simple_message(
+        email,
+        "Successfully signed up",
+        f"Hi {username}! You have successfully signed up to the TechBlog.",
+        render_template("email/action.html", username=username),
+    )
+
 # registration
 @blp.route("/register")
 class UserRegister(MethodView):
@@ -50,11 +66,9 @@ class UserRegister(MethodView):
             db.session.rollback()
             abort(500, message="An error occurred while registering the user.")
         
-        send_simple_message(
-            to=user.email,
-            subject="Successfully signed up",
-            body=f"Hi {user.username}! You have successfully signed up to the TechBlog."
-        )
+        # send email to the user
+        send_user_registration_email(user.email, user.username)
+        
         return {"message": "User created successfully."}, 201
 
 # login    
@@ -101,9 +115,9 @@ class UserList(MethodView):
     @blp.response(200, UserSchema(many=True))
     def get(self):
         jwt = get_jwt()
-        if jwt["role"] != UserRole.ADMIN:
+        if jwt["role"] != UserRole.ADMIN.value:
             abort(403, message="Access forbidden.")     
-        return UserModel.query.all(), 200
+        return UserModel.query.all()
 
 @blp.route("/users/<uuid:user_id>")
 class UserProfile(MethodView):
@@ -115,11 +129,11 @@ class UserProfile(MethodView):
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
 
-        if jwt_identity != str(user_id) and jwt["role"] != UserRole.ADMIN: 
+        if jwt_identity != str(user_id) and jwt["role"] != UserRole.ADMIN.value: 
             abort(403, message="Access forbidden.")
 
         user = UserModel.query.get_or_404(str(user_id))
-        return user, 200
+        return user
 
     # update profile info
     @jwt_required(fresh=True)
@@ -161,7 +175,7 @@ class UserProfile(MethodView):
             db.session.rollback()
             abort(500, message=str(e))
 
-        return user, 200
+        return user
     
     # delete user
     @jwt_required(fresh=True)
@@ -170,7 +184,7 @@ class UserProfile(MethodView):
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
 
-        if jwt_identity != str(user_id) and jwt["role"] != UserRole.ADMIN: 
+        if jwt_identity != str(user_id) and jwt["role"] != UserRole.ADMIN.value: 
             abort(403, message="Access forbidden.")
             
         user = UserModel.query.get_or_404(str(user_id))
@@ -179,7 +193,7 @@ class UserProfile(MethodView):
             db.session.commit()
         except SQLAlchemyError:
             abort(500, message="An error occurred while deleting the user.")
-        return {"message": "User deleted successfully"}, 204
+        return {"message": "User deleted successfully"}
 
 # change password
 @blp.route("/users/<uuid:user_id>/password")
@@ -214,7 +228,7 @@ class UserRoleChange(MethodView):
     @blp.response(200, UserSchema)
     def patch(self, role_data, user_id):
         jwt = get_jwt()
-        if jwt["role"] != UserRole.ADMIN:
+        if jwt["role"] != UserRole.ADMIN.value:
             abort(403, message="Access forbidden.")
 
         user = UserModel.query.get_or_404(str(user_id))
@@ -225,7 +239,7 @@ class UserRoleChange(MethodView):
             db.session.rollback()
             abort(500, message="An error occurred while updating the user role.")
 
-        return user, 200
+        return user
 
 # get posts o
 @blp.route("/users/<uuid:user_id>/posts")
@@ -234,4 +248,4 @@ class UserPosts(MethodView):
     @blp.response(200, PostResponseSchema(many=True))
     def get(self, user_id):
         user = UserModel.query.get_or_404(str(user_id))
-        return user.posts, 200
+        return user.posts
