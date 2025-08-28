@@ -24,3 +24,7 @@ class UserModel(db.Model):
     posts = db.relationship(
         "PostModel", back_populates="author", cascade="all, delete"
     )
+
+    comments = db.relationship(
+        "CommentModel", back_populates="user", cascade="all, delete"
+    )

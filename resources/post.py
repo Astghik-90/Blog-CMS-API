@@ -15,7 +15,7 @@ blp = Blueprint("Post", __name__, description="Operations on posts")
 @blp.route("/posts")
 class PostList(MethodView):
     @jwt_required()
-    @blp.response(200, PlainPostSchema(many=True))
+    @blp.response(200, PostResponseSchema(many=True))
     def get(self):
         return PostModel.query.all()
     
@@ -62,12 +62,11 @@ class Post(MethodView):
         # Check authorization - only author or admin can update
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
-        
-        if post.author_id != jwt_identity and jwt["role"] != UserRole.ADMIN.value: 
-            abort(403, message="Access forbidden. Only the author or admin can update this post.")
 
         post = PostModel.query.get_or_404(str(post_id))
 
+        if post.author_id != jwt_identity and jwt["role"] != UserRole.ADMIN.value: 
+            abort(403, message="Access forbidden. Only the author or admin can update this post.")
         # update categories only if the field is provided in request
         if "category_names" in post_data:
             category_names = post_data.pop("category_names")

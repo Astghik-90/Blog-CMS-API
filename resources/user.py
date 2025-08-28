@@ -1,50 +1,22 @@
 import os
 import requests
-from flask import request, render_template
+from flask import request, render_template, current_app
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_, and_
 from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity, get_jwt, jwt_required
-import jinja2
+
 
 from db import db
 from models import UserModel
 from schemas import UserSchema, UserSignupSchema, UserLoginSchema, UpdateProfileSchema, ChangePasswordSchema, ChangeRoleSchema, PostResponseSchema  
 from enums.roles import UserRole
 from blocklist import BLOCKLIST
-
+from tasks import send_user_registration_email
+    
 blp = Blueprint("Users", __name__, description="Operations on users")
-
-template_loader = jinja2.FileSystemLoader('templates')
-template_env = jinja2.Environment(loader=template_loader)
-
-def render_template(template_name, **context):
-    return template_env.get_template(template_name).render(**context)
-
-
-def send_simple_message(to, subject, body, html):
-    domain = os.getenv("MAILGUN_DOMAIN")
-    return requests.post(
-        f"https://api.mailgun.net/v3/{domain}/messages",
-        auth=("api", os.getenv("MAILGUN_API_KEY")),
-        data={
-            "from": f"TechBlog Team <postmaster@{domain}>",
-            "to": [to],
-            "subject": subject,
-            "text": body,
-            "html": html
-        },
-    )
-
-def send_user_registration_email(email, username):
-    return send_simple_message(
-        email,
-        "Successfully signed up",
-        f"Hi {username}! You have successfully signed up to the TechBlog.",
-        render_template("email/action.html", username=username),
-    )
 
 # registration
 @blp.route("/register")
@@ -67,8 +39,13 @@ class UserRegister(MethodView):
             abort(500, message="An error occurred while registering the user.")
         
         # send email to the user
-        send_user_registration_email(user.email, user.username)
-        
+        try:
+            current_app.queue.enqueue(send_user_registration_email, user.email, user.username)
+            return {"message": "User created successfully. Please check your email for details."}, 201
+
+        except Exception as e:
+            print(f"Email failed: {str(e)}")
+
         return {"message": "User created successfully."}, 201
 
 # login    

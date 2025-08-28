@@ -85,7 +85,7 @@ class Comment(MethodView):
     @jwt_required()  
     @blp.arguments(PlainCommentSchema)
     @blp.response(200, CommentSchema)
-    def put(self, comment_id, comment_data):
+    def put(self, comment_data, comment_id):
         comment = CommentModel.query.get_or_404(str(comment_id))
         
         jwt_identity = get_jwt_identity()

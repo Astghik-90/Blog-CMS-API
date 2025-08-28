@@ -63,7 +63,7 @@ class CommentSchema(PlainCommentSchema):
 class PostUpdateSchema(Schema):
     title = fields.Str()
     content = fields.Str()
-    categories = fields.List(fields.Nested(CategorySchema))
+    category_names = fields.List(fields.Str())
 
 class PostCreationSchema(Schema):
     title = fields.Str(required=True)
