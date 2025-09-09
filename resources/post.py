@@ -5,7 +5,7 @@ from flask_smorest import Blueprint, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from db import db
-from models import PostModel, CategoryModel
+from models import PostModel, CategoryModel, PostCategoryModel
 from schemas import PlainPostSchema, PostResponseSchema, PostCreationSchema, PostUpdateSchema
 from enums.roles import UserRole
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError     
@@ -17,7 +17,42 @@ class PostList(MethodView):
     @jwt_required()
     @blp.response(200, PostResponseSchema(many=True))
     def get(self):
-        return PostModel.query.all()
+        query = PostModel.query
+        
+        # Filter by category name (?category=python&category=flask)
+        category_names = request.args.getlist('category')
+        if category_names:
+            # More efficient approach using PostCategoryModel
+            post_ids_subquery = db.session.query(PostCategoryModel.post_id).join(
+                CategoryModel, PostCategoryModel.category_id == CategoryModel.id
+            ).filter(CategoryModel.name.in_(category_names)).distinct()
+            
+            query = query.filter(PostModel.id.in_(post_ids_subquery))
+        
+        # Filter by author_id (?author_id=some-uuid)
+        author_id = request.args.get('author_id')
+        if author_id:
+            query = query.filter_by(author_id=author_id)
+            
+        # Search by title or content (?search=flask)
+        search = request.args.get('q')
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                db.or_(
+                    PostModel.title.ilike(search_term),
+                    PostModel.content.ilike(search_term)
+                )
+            )
+        
+        # filter by creation date (?created_after=2023-01-01&created_before=2023-12-31)
+        if request.args.get('created_after'):
+            query = query.filter(PostModel.created_at > request.args.get('created_after'))
+
+        if request.args.get('created_before'):
+            query = query.filter(PostModel.created_at < request.args.get('created_before'))
+
+        return query.all()
     
     @jwt_required(fresh=True)
     @blp.arguments(PostCreationSchema)

@@ -38,6 +38,9 @@ A Flask REST API application with JWT authentication and PostgreSQL database, co
    ```bash
    DATABASE_URL=postgresql://postgres:password@db:5432/myapp
    JWT_SECRET_KEY=your-super-secret-key-change-in-production
+   MAILGUN_API_KEY=
+   MAILGUN_DOMAIN=
+   REDIS_URL=redis://redis:6379/0
    ```
 
 ## Quick Start
@@ -47,6 +50,9 @@ After completing the [Installation](#installation) steps above:
 ### 1. Run with Docker
 
 ```bash
+# Activate virtual environment
+source venv/bin/activate
+
 # Build and start
 docker compose up --build
 
@@ -105,3 +111,6 @@ docker compose down -v && docker compose up --build
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET_KEY` | Secret key for JWT tokens |
+| `MAILGUN_API_KEY`| API key for Mailgun email service |
+| `MAILGUN_DOMAIN`| Domain name configured in Mailgun for sending emails |
+| `REDIS_URL`| Redis connection string for caching and background tasks | 
