@@ -11,6 +11,7 @@ from schemas import CategorySchema
 
 blp = Blueprint("Category", __name__, description="Operations on categories")
 
+
 @blp.route("/categories")
 class CategoryList(MethodView):
     # get all categories
@@ -27,7 +28,7 @@ class CategoryList(MethodView):
         jwt = get_jwt()
         if jwt["role"] != UserRole.ADMIN.value:
             abort(403, message="Access forbidden.")
-            
+
         category = CategoryModel(**category_data)
         try:
             db.session.add(category)
@@ -39,6 +40,7 @@ class CategoryList(MethodView):
             db.session.rollback()
             abort(500, message="An error occurred while creating the category.")
         return category
+
 
 @blp.route("/categories/<uuid:category_id>")
 class CategoryItem(MethodView):
@@ -56,7 +58,7 @@ class CategoryItem(MethodView):
         jwt = get_jwt()
         if jwt["role"] != UserRole.ADMIN.value:
             abort(403, message="Access forbidden.")
-            
+
         category = CategoryModel.query.get_or_404(str(category_id))
         try:
             db.session.delete(category)

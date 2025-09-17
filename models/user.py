@@ -10,20 +10,16 @@ class UserModel(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
-    role = db.Column(
-        db.Integer, default=UserRole.AUTHOR.value, nullable=False
-    )
-    created_at = db.Column(
-        db.DateTime, server_default=db.func.now(), nullable=False
-    )
+    role = db.Column(db.Integer, default=UserRole.AUTHOR.value, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
     updated_at = db.Column(
-        db.DateTime, server_default=db.func.now(), 
-        onupdate=db.func.now(), nullable=False
+        db.DateTime,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+        nullable=False,
     )
 
-    posts = db.relationship(
-        "PostModel", back_populates="author", cascade="all, delete"
-    )
+    posts = db.relationship("PostModel", back_populates="author", cascade="all, delete")
 
     comments = db.relationship(
         "CommentModel", back_populates="user", cascade="all, delete"

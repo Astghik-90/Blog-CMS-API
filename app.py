@@ -7,13 +7,14 @@ from flask_smorest import Api
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from dotenv import load_dotenv
-from db import db 
+from db import db
 from blocklist import BLOCKLIST
 
 from resources.user import blp as UserBlueprint
 from resources.post import blp as PostBlueprint
 from resources.category import blp as CategoryBlueprint
 from resources.comment import blp as CommentBlueprint
+
 
 def create_app(db_url=None):
     app = Flask(__name__)
@@ -28,16 +29,20 @@ def create_app(db_url=None):
     app.config["OPENAPI_VERSION"] = "3.0.3"
     app.config["OPENAPI_URL_PREFIX"] = "/"
     app.config["OPENAPI_SWAGGER_UI_PATH"] = "/swagger-ui"
-    app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
+    app.config["OPENAPI_SWAGGER_UI_URL"] = (
+        "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
+    )
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url or os.getenv(
         "DATABASE_URL", "sqlite:///data.db"
-    )    
+    )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
     migrate = Migrate(app, db)
     api = Api(app)
 
-    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "change-this-super-secret-key-in-production")
+    app.config["JWT_SECRET_KEY"] = os.getenv(
+        "JWT_SECRET_KEY", "change-this-super-secret-key-in-production"
+    )
     jwt = JWTManager(app)
 
     @jwt.token_in_blocklist_loader
@@ -50,11 +55,15 @@ def create_app(db_url=None):
 
     @jwt.needs_fresh_token_loader
     def token_not_fresh_callback(jwt_header, jwt_payload):
-        return jsonify({
-            "description": "The token is not fresh.", 
-            "error": "fresh_token_required"
-        }), 401
-
+        return (
+            jsonify(
+                {
+                    "description": "The token is not fresh.",
+                    "error": "fresh_token_required",
+                }
+            ),
+            401,
+        )
 
     api.register_blueprint(UserBlueprint)
     api.register_blueprint(PostBlueprint)

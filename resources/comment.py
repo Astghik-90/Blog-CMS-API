@@ -11,6 +11,7 @@ from schemas import CommentSchema, PlainCommentSchema
 
 blp = Blueprint("Comment", __name__, description="Operations on comments")
 
+
 @blp.route("/comments")
 class AllCommentsList(MethodView):
     # get all comments (admin only)
@@ -20,9 +21,10 @@ class AllCommentsList(MethodView):
         jwt = get_jwt()
         if jwt["role"] != UserRole.ADMIN.value:
             abort(403, message="Access forbidden. Admin access required.")
-        
+
         comments = CommentModel.query.all()
         return comments
+
 
 @blp.route("/posts/<uuid:post_id>/comments")
 class PostCommentList(MethodView):
@@ -40,11 +42,11 @@ class PostCommentList(MethodView):
     def post(self, comment_data, post_id):
         # Verify post exists
         post = PostModel.query.get_or_404(str(post_id))
-        
+
         comment = CommentModel(**comment_data)
         comment.post_id = str(post_id)
         comment.user_id = get_jwt_identity()
-        
+
         try:
             db.session.add(comment)
             db.session.commit()
@@ -52,6 +54,7 @@ class PostCommentList(MethodView):
             db.session.rollback()
             abort(500, message="An error occurred while creating the comment.")
         return comment
+
 
 @blp.route("/comments/<uuid:comment_id>")
 class Comment(MethodView):
@@ -70,9 +73,11 @@ class Comment(MethodView):
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
         #  Admin, comment owner, or post author
-        if (jwt["role"] != UserRole.ADMIN.value and 
-            jwt_identity != comment.user_id and 
-            jwt_identity != comment.post.author_id):
+        if (
+            jwt["role"] != UserRole.ADMIN.value
+            and jwt_identity != comment.user_id
+            and jwt_identity != comment.post.author_id
+        ):
             abort(403, message="Access forbidden.")
         try:
             db.session.delete(comment)
@@ -81,13 +86,13 @@ class Comment(MethodView):
             db.session.rollback()
             abort(500, message="An error occurred while deleting the comment.")
         return ""
-    
-    @jwt_required()  
+
+    @jwt_required()
     @blp.arguments(PlainCommentSchema)
     @blp.response(200, CommentSchema)
     def put(self, comment_data, comment_id):
         comment = CommentModel.query.get_or_404(str(comment_id))
-        
+
         jwt_identity = get_jwt_identity()
         if jwt_identity != comment.user_id:
             abort(403, message="Access forbidden.")
