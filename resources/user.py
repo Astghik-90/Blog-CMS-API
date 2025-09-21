@@ -76,7 +76,13 @@ class UserRegister(MethodView):
 class UserLogin(MethodView):
     @blp.arguments(UserLoginSchema)
     def post(self, user_data):
-        user = UserModel.query.filter_by(username=user_data["username"]).first()
+        # check email first
+        username_email = user_data["username_email"]
+        user = UserModel.query.filter_by(email=username_email).first()
+
+        if not user:
+            # if not email check username
+            user = UserModel.query.filter_by(username=username_email).first()
 
         if user and check_password_hash(user.password_hash, user_data["password"]):
             access_token = create_access_token(
@@ -85,7 +91,11 @@ class UserLogin(MethodView):
             refresh_token = create_refresh_token(
                 identity=str(user.id), additional_claims={"role": user.role}
             )
-            return {"access_token": access_token, "refresh_token": refresh_token}
+            return {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "id": str(user.id),
+            }
 
         abort(401, message="Invalid credentials.")
 
@@ -130,7 +140,7 @@ class UserProfile(MethodView):
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
 
-        if jwt_identity != str(user_id) and jwt["role"] != UserRole.ADMIN.value:
+        if jwt["role"] != UserRole.ADMIN.value:
             abort(403, message="Access forbidden.")
 
         user = UserModel.query.get_or_404(str(user_id))
@@ -139,7 +149,7 @@ class UserProfile(MethodView):
     # update profile info
     @jwt_required(fresh=True)
     @blp.arguments(UpdateProfileSchema)
-    @blp.response(200, UserSchema)
+    @blp.response(200)
     def put(self, user_data, user_id):
         jwt_identity = get_jwt_identity()
         # error if trying to update another user's profile
@@ -176,7 +186,7 @@ class UserProfile(MethodView):
             db.session.rollback()
             abort(500, message=str(e))
 
-        return user
+        return {"message": "Profile updated successfully."}
 
     # delete user
     @jwt_required(fresh=True)
@@ -230,7 +240,7 @@ class UserPasswordChange(MethodView):
 class UserRoleChange(MethodView):
     @jwt_required(fresh=True)
     @blp.arguments(ChangeRoleSchema)
-    @blp.response(200, UserSchema)
+    @blp.response(200)
     def patch(self, role_data, user_id):
         jwt = get_jwt()
         if jwt["role"] != UserRole.ADMIN.value:
@@ -244,10 +254,10 @@ class UserRoleChange(MethodView):
             db.session.rollback()
             abort(500, message="An error occurred while updating the user role.")
 
-        return user
+        return {"message": "User role updated successfully."}
 
 
-# get posts o
+# get posts
 @blp.route("/users/<uuid:user_id>/posts")
 class UserPosts(MethodView):
     @jwt_required()

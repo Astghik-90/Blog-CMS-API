@@ -5,13 +5,8 @@ from flask_smorest import Blueprint, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from db import db
-from models import PostModel, CategoryModel, PostCategoryModel
-from schemas import (
-    PlainPostSchema,
-    PostResponseSchema,
-    PostCreationSchema,
-    PostUpdateSchema,
-)
+from models import PostModel, CategoryModel
+from schemas import PostResponseSchema, PostSchema
 from enums.roles import UserRole
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
@@ -22,21 +17,12 @@ blp = Blueprint("Post", __name__, description="Operations on posts")
 class PostList(MethodView):
     @jwt_required()
     @blp.response(200, PostResponseSchema(many=True))
-    def get(self):
+    def get(self):  # list posts with filters
         query = PostModel.query
 
         # Filter by category name (?category=python&category=flask)
         category_names = request.args.getlist("category")
         if category_names:
-            # More efficient approach using PostCategoryModel
-            # post_ids_subquery = (
-            #     db.session.query(PostCategoryModel.post_id)
-            #     .join(CategoryModel, PostCategoryModel.category_id == CategoryModel.id)
-            #     .filter(CategoryModel.name.in_(category_names))
-            #     .distinct()
-            # )
-            # query = query.filter(PostModel.id.in_(post_ids_subquery))
-
             query = query.join(PostModel.categories).filter(
                 CategoryModel.name.in_(category_names)
             )
@@ -45,9 +31,6 @@ class PostList(MethodView):
         author_id = request.args.get("author_id")
         if author_id:
             query = query.filter(PostModel.author_id == author_id)
-            # query = query.filter_by(author_id=author_id)
-        print("-------------------------------------------------------")
-        print(str(query))
 
         # Search by title or content (?search=flask)
         search = request.args.get("q")
@@ -74,9 +57,9 @@ class PostList(MethodView):
         return query.all()
 
     @jwt_required(fresh=True)
-    @blp.arguments(PostCreationSchema)
+    @blp.arguments(PostSchema)
     @blp.response(201, PostResponseSchema)
-    def post(self, post_data):
+    def post(self, post_data):  # create post
         category_names = post_data.pop("category_names", [])
         post = PostModel(**post_data)
 
@@ -107,14 +90,14 @@ class Post(MethodView):
     # get post details by ID
     @jwt_required()
     @blp.response(200, PostResponseSchema)
-    def get(self, post_id):
+    def get(self, post_id):  # get individual post details
         post = PostModel.query.get_or_404(str(post_id))
         return post, 200
 
     @jwt_required(fresh=True)
-    @blp.arguments(PostUpdateSchema)
-    @blp.response(200, PostResponseSchema)
-    def put(self, post_data, post_id):
+    @blp.arguments(PostSchema)
+    @blp.response(200)
+    def put(self, post_data, post_id):  # update post
 
         # Check authorization - only author or admin can update
         jwt_identity = get_jwt_identity()
@@ -122,10 +105,10 @@ class Post(MethodView):
 
         post = PostModel.query.get_or_404(str(post_id))
 
-        if post.author_id != jwt_identity and jwt["role"] != UserRole.ADMIN.value:
+        if post.author_id != jwt_identity:
             abort(
                 403,
-                message="Access forbidden. Only the author or admin can update this post.",
+                message="Access forbidden. Only the author can update this post.",
             )
         # update categories only if the field is provided in request
         if "category_names" in post_data:
@@ -154,11 +137,11 @@ class Post(MethodView):
             db.session.rollback()
             abort(500, message="An error occurred while updating the post.")
 
-        return post, 200
+        return {"message": "Post updated successfully."}
 
     @jwt_required(fresh=True)
     @blp.response(204)
-    def delete(self, post_id):
+    def delete(self, post_id): # delete post
         post = PostModel.query.get_or_404(str(post_id))
 
         # Check authorization - only author or admin can delete

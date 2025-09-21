@@ -2,37 +2,17 @@ from marshmallow import Schema, fields, validate
 from datetime import datetime
 
 
-# plain schemas
-class PlainCommentSchema(Schema):
-    id = fields.Str(dump_only=True)
-    content = fields.Str(required=True, validate=validate.Length(min=2))
-
-
-class PlainPostSchema(Schema):
-    id = fields.Str(dump_only=True)
-    title = fields.Str(required=True)
-    content = fields.Str(required=True)
-
-
-class PlainUserSchema(Schema):
+# user schemas
+class UserSchema(Schema):  # for get users details
     id = fields.Str(dump_only=True)
     username = fields.Str(required=True)
-
-
-class CategorySchema(Schema):
-    id = fields.Str(dump_only=True)
-    name = fields.Str(required=True)
-
-
-# user schemas
-class UserSchema(PlainUserSchema):  # for get users details
     email = fields.Email(required=True)
-    role = fields.Int(required=True, dump_only=True)
+    role = fields.Int(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
 
 
-class UserSignupSchema(PlainUserSchema):
+class UserSignupSchema(Schema):
     email = fields.Email(required=True, load_only=True)
     password = fields.Str(
         required=True,
@@ -45,14 +25,13 @@ class UserSignupSchema(PlainUserSchema):
 
 
 class UserLoginSchema(Schema):
-    username = fields.Str(required=True, load_only=True)
+    username_email = fields.Str(required=True, load_only=True)
     password = fields.Str(required=True, load_only=True)
 
 
-class UpdateProfileSchema(PlainUserSchema):
+class UpdateProfileSchema(Schema):
+    username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
     email = fields.Email(required=True)
-    role = fields.Int(dump_only=True, validate=lambda x: x in [1, 2])
-    updated_at = fields.DateTime(dump_only=True)
 
 
 class ChangePasswordSchema(Schema):
@@ -71,29 +50,34 @@ class ChangeRoleSchema(Schema):
     role = fields.Int(required=True, validate=lambda x: x in [1, 2])
 
 
-# comment schema for get comment by ID
-class CommentSchema(PlainCommentSchema):
+# comment schema
+class CommentSchema(Schema):
+    id = fields.Str(dump_only=True)
+    content = fields.Str(required=True, validate=validate.Length(min=2))
+    user_id = fields.Str(dump_only=True)
+    post_id = fields.Str(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
-    user = fields.Nested(PlainUserSchema(), dump_only=True)
-    post = fields.Nested(PlainPostSchema(), dump_only=True)
+
+
+# category schema
+class CategorySchema(Schema):
+    id = fields.Str(dump_only=True)
+    name = fields.Str(required=True)
 
 
 # post schemas
-class PostUpdateSchema(Schema):
-    title = fields.Str()
-    content = fields.Str()
-    category_names = fields.List(fields.Str())
-
-
-class PostCreationSchema(Schema):
+class PostSchema(Schema):
+    id = fields.Str(dump_only=True)
     title = fields.Str(required=True)
     content = fields.Str(required=True)
-    category_names = fields.List(fields.Str(), dump_default=[])
+    category_names = fields.List(fields.Str(), required=False)
 
 
-class PostResponseSchema(PlainPostSchema):  # individual post details
+class PostResponseSchema(PostSchema):  # post details
+    id = fields.Str()
+    title = fields.Str()
+    content = fields.Str()
+    author_id = fields.Str()
     created_at = fields.DateTime()
     updated_at = fields.DateTime()
-    author = fields.Nested(PlainUserSchema())
-    comments = fields.List(fields.Nested(PlainCommentSchema()), dump_default=[])
-    categories = fields.List(fields.Nested(CategorySchema), dump_default=[])
+    categories = fields.List(fields.Nested(CategorySchema))

@@ -3,11 +3,11 @@ from flask.views import MethodView
 from enums.roles import UserRole
 from flask_smorest import Blueprint, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 
 from db import db
-from models import CommentModel, PostModel, UserModel
-from schemas import CommentSchema, PlainCommentSchema
+from models import CommentModel, PostModel
+from schemas import CommentSchema
 
 blp = Blueprint("Comment", __name__, description="Operations on comments")
 
@@ -30,14 +30,14 @@ class AllCommentsList(MethodView):
 class PostCommentList(MethodView):
     # get all comments of the post
     @jwt_required()
-    @blp.response(200, PlainCommentSchema(many=True))
+    @blp.response(200, CommentSchema(many=True))
     def get(self, post_id):
         post = PostModel.query.get_or_404(str(post_id))
         return post.comments
 
     # create comment for the post
     @jwt_required()
-    @blp.arguments(PlainCommentSchema)
+    @blp.arguments(CommentSchema)
     @blp.response(201, CommentSchema)
     def post(self, comment_data, post_id):
         # Verify post exists
@@ -85,12 +85,12 @@ class Comment(MethodView):
         except SQLAlchemyError:
             db.session.rollback()
             abort(500, message="An error occurred while deleting the comment.")
-        return ""
+        return {"message": "Comment deleted successfully."}
 
     @jwt_required()
-    @blp.arguments(PlainCommentSchema)
+    @blp.arguments(CommentSchema)
     @blp.response(200, CommentSchema)
-    def put(self, comment_data, comment_id):
+    def put(self, comment_data, comment_id):  # update comment
         comment = CommentModel.query.get_or_404(str(comment_id))
 
         jwt_identity = get_jwt_identity()
@@ -102,4 +102,4 @@ class Comment(MethodView):
         except SQLAlchemyError:
             db.session.rollback()
             abort(500, message="An error occurred while updating the comment.")
-        return comment
+        return {"message": "Comment updated successfully."}
