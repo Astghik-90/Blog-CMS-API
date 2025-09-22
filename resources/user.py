@@ -132,7 +132,7 @@ class UserList(MethodView):
 
 @blp.route("/users/<uuid:user_id>")
 class UserProfile(MethodView):
-    # get user details
+    # get user details / profile
     @jwt_required()
     @blp.response(200, UserSchema)
     def get(self, user_id):
@@ -140,7 +140,7 @@ class UserProfile(MethodView):
         jwt_identity = get_jwt_identity()
         jwt = get_jwt()
 
-        if jwt["role"] != UserRole.ADMIN.value:
+        if jwt["role"] != UserRole.ADMIN.value and str(user_id) != jwt_identity:
             abort(403, message="Access forbidden.")
 
         user = UserModel.query.get_or_404(str(user_id))
@@ -163,11 +163,11 @@ class UserProfile(MethodView):
             or_(
                 and_(
                     UserModel.username == user_data["username"].lower(),
-                    UserModel.id != user_id,
+                    UserModel.id != str(user_id),
                 ),
                 and_(
                     UserModel.email == user_data["email"].lower(),
-                    UserModel.id != user_id,
+                    UserModel.id != str(user_id),
                 ),
             )
         ).first()
@@ -208,17 +208,15 @@ class UserProfile(MethodView):
 
 
 # change password
-@blp.route("/users/<uuid:user_id>/password")
+@blp.route("/users/password")
 class UserPasswordChange(MethodView):
     @jwt_required(fresh=True)
     @blp.arguments(ChangePasswordSchema)
-    def patch(self, password_data, user_id):
+    def patch(self, password_data):
         # check the identity of the user
-        jwt_identity = get_jwt_identity()
-        if jwt_identity != str(user_id):
-            abort(403, message="Access forbidden.")
+        user_id = get_jwt_identity()
 
-        user = UserModel.query.get_or_404(str(user_id))
+        user = UserModel.query.get_or_404(user_id)
         # error if the password is wrong
         if not check_password_hash(user.password_hash, password_data["old_password"]):
             abort(401, message="Invalid old password.")

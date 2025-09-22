@@ -13,6 +13,7 @@ class UserSchema(Schema):  # for get users details
 
 
 class UserSignupSchema(Schema):
+    username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
     email = fields.Email(required=True, load_only=True)
     password = fields.Str(
         required=True,
