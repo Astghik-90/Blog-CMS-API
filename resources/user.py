@@ -1,3 +1,4 @@
+from datetime import timedelta
 import os
 import requests
 from flask import request, render_template, current_app
@@ -6,9 +7,11 @@ from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_, and_
+from jwt import ExpiredSignatureError, InvalidTokenError
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
+    decode_token,
     get_jwt_identity,
     get_jwt,
     jwt_required,
@@ -18,6 +21,7 @@ from flask_jwt_extended import (
 from db import db
 from models import UserModel
 from schemas import (
+    ResetPasswordSchema,
     UserSchema,
     UserSignupSchema,
     UserLoginSchema,
@@ -253,6 +257,73 @@ class UserRoleChange(MethodView):
             abort(500, message="An error occurred while updating the user role.")
 
         return {"message": "User role updated successfully."}
+
+
+@blp.route("/users/<string:user_id>/reset-password")
+class AdminResetPassword(MethodView):
+    @jwt_required()
+    def post(self, user_id):
+        current_user_id = get_jwt_identity()
+        admin = UserModel.query.get_or_404(current_user_id)
+
+        if admin.role != 1:
+            abort(403, message="Access forbidden. Admins only.")
+
+        # Ensure the user exists
+        user = UserModel.query.get_or_404(user_id)
+
+        # Generate reset token (JWT valid for 1 hour)
+        reset_token = create_access_token(
+            identity=str(user.id),
+            additional_claims={"pw_reset": True},
+            expires_delta=timedelta(hours=1),
+        )
+
+        # reset link
+        reset_url = f"http://127.0.0.1:5000/reset-password?token={reset_token}"
+
+        return {
+            "message": "Password reset link generated.",
+            "reset_url": reset_url,
+            "reset_token": reset_token,
+        }, 200
+
+
+@blp.route("/users/reset-password")
+class UserSetNewPassword(MethodView):
+    @blp.arguments(ResetPasswordSchema)  # schema with only new_password
+    @jwt_required(optional=True)  # verify manually
+    def post(self, password_data):
+        token = request.args.get("token")
+
+        if not token:
+            return {"error": "Token is required"}, 400
+
+        try:
+            data = decode_token(token)
+        except ExpiredSignatureError:
+            return {"error": "Token expired"}, 400
+        except InvalidTokenError:
+            return {"error": "Invalid token"}, 400
+
+        # Check that it is a reset token
+        if not data.get("pw_reset"):
+            return {"error": "Invalid token type"}, 403
+
+        user_id = data["sub"]
+        user = UserModel.query.get_or_404(user_id)
+
+        # Update password
+        user.password_hash = generate_password_hash(
+            password_data["new_password"], method="pbkdf2:sha256", salt_length=16
+        )
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            abort(500, message="An error occurred while changing the password.")
+
+        return {"message": "Password resetted successfully."}, 200
 
 
 # get posts

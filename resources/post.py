@@ -99,9 +99,8 @@ class Post(MethodView):
     @blp.response(200)
     def put(self, post_data, post_id):  # update post
 
-        # Check authorization - only author or admin can update
+        # Check authorization - only author can update
         jwt_identity = get_jwt_identity()
-        jwt = get_jwt()
 
         post = PostModel.query.get_or_404(str(post_id))
 
@@ -141,7 +140,7 @@ class Post(MethodView):
 
     @jwt_required(fresh=True)
     @blp.response(204)
-    def delete(self, post_id): # delete post
+    def delete(self, post_id):  # delete post
         post = PostModel.query.get_or_404(str(post_id))
 
         # Check authorization - only author or admin can delete

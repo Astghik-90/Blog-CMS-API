@@ -47,6 +47,17 @@ class ChangePasswordSchema(Schema):
     )
 
 
+class ResetPasswordSchema(Schema):
+    new_password = fields.Str(
+        required=True,
+        load_only=True,
+        validate=validate.Regexp(
+            r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$",
+            error="Password must be at least 8 characters long and include letters and numbers.",
+        ),
+    )
+
+
 class ChangeRoleSchema(Schema):
     role = fields.Int(required=True, validate=lambda x: x in [1, 2])
 
