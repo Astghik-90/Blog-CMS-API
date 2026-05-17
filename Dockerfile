@@ -3,5 +3,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 COPY . .
-CMD ["/bin/bash", "docker-entrypoint.sh"]
+RUN chmod +x docker-entrypoint.sh
+ENTRYPOINT ["/bin/sh", "-c", "sed -i 's/\r$//' /app/docker-entrypoint.sh && exec /bin/sh /app/docker-entrypoint.sh"]
 

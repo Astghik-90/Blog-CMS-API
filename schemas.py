@@ -19,7 +19,7 @@ class UserSignupSchema(Schema):
         required=True,
         load_only=True,
         validate=validate.Regexp(
-            r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$",
+            r"^(?=.*[A-Za-z])(?=.*\d).{8,}$",
             error="Password must be at least 8 characters long and include letters and numbers.",
         ),
     )
