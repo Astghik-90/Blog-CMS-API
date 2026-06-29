@@ -80,8 +80,8 @@ class CategorySchema(Schema):
 # post schemas
 class PostSchema(Schema):
     id = fields.Str(dump_only=True)
-    title = fields.Str(required=True)
-    content = fields.Str(required=True)
+    title = fields.Str(required=True, validate=validate.Length(min=1, max=50))
+    content = fields.Str(required=True, validate=validate.Length(min=2, max=5000))
     category_names = fields.List(fields.Str(), required=False)
 
 
