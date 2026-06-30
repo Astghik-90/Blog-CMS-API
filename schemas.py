@@ -62,11 +62,17 @@ class ChangeRoleSchema(Schema):
     role = fields.Int(required=True, validate=lambda x: x in [1, 2])
 
 
+# user mini schema for nested representation in posts and comments
+class UserMiniSchema(Schema):
+    id = fields.Str()
+    username = fields.Str()
+
+
 # comment schema
 class CommentSchema(Schema):
     id = fields.Str(dump_only=True)
     content = fields.Str(required=True, validate=validate.Length(min=2))
-    user_id = fields.Str(dump_only=True)
+    user = fields.Nested(UserMiniSchema, dump_only=True)
     post_id = fields.Str(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
 
@@ -89,7 +95,7 @@ class PostResponseSchema(PostSchema):  # post details
     id = fields.Str()
     title = fields.Str()
     content = fields.Str()
-    author_id = fields.Str()
+    author = fields.Nested(UserMiniSchema, dump_only=True)
     created_at = fields.DateTime()
     updated_at = fields.DateTime()
     categories = fields.List(fields.Nested(CategorySchema))
